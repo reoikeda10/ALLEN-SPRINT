@@ -23,9 +23,11 @@
                 <span class="font-black text-blue-900 font-athletics italic">NEWS</span>
             </a>
             <div class="flex items-center gap-4">
-                <div id="admin-status" class="hidden text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">管理者モード</div>
-                <button id="login-btn" class="text-xs font-bold text-blue-900 border border-blue-900 px-3 py-1 rounded hover:bg-blue-50 transition-colors">ログイン</button>
-                <button id="logout-btn" class="hidden text-xs font-bold text-slate-500 hover:text-red-600">ログアウト</button>
+                <div id="auth-status" class="flex items-center gap-3">
+                    <button id="login-btn" class="text-xs font-bold text-blue-900 border border-blue-900 px-3 py-1 rounded hover:bg-blue-50 transition-colors flex items-center gap-1">
+                        <i data-lucide="log-in" size="14"></i>管理者ログイン
+                    </button>
+                </div>
                 <a href="index.html" class="text-sm font-bold text-slate-500 hover:text-blue-900">ホームへ戻る</a>
             </div>
         </div>
@@ -65,8 +67,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD8QXllW3Fzo1oewq72xg3PtYCG36ARaOA",
@@ -80,18 +82,73 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
         const appId = "allen-sprint-cloud-data-6ffcf";
 
         let isAdmin = false;
         let posts = [];
         let editingId = null;
 
-        // 管理者メールアドレスの検証 (Firestoreのドキュメントで管理)
-        const checkIsAdmin = async (email) => {
+        // 指定のメールアドレスリスト（Firestoreから読み込む予備として、初回のみこちらで初期化も可能ですが、
+        // 今回はコードにリストを書かず、Firestore上の /admin_config/permissions ドキュメントを見に行く設計にします）
+        const checkAdminPermission = async (email) => {
             if (!email) return false;
-            // コード上に見せないため、Firestoreの専用パスにメールアドレスをIDとしたドキュメントがあるか確認
-            const adminDoc = await getDoc(doc(db, 'artifacts', appId, 'admin_list', email));
-            return adminDoc.exists();
+            try {
+                // セキュリティのため、許可リストをFirestoreに保存しておき、それを参照します
+                // 実行環境でリストが見つからない場合は、ログインしたユーザーを管理者として一時的に扱わないようにします
+                const adminRef = doc(db, 'artifacts', appId, 'admin_config', 'permissions');
+                const snap = await getDoc(adminRef);
+                if (snap.exists()) {
+                    const allowedEmails = snap.data().allowed || [];
+                    return allowedEmails.includes(email);
+                } else {
+                    // 初期設定：初めての場合はここで許可リストを作成（初回実行用）
+                    const initialList = [
+                        "reoikeda8@gmail.com", "reoikeda10@gmail.com", 
+                        "reoikeda9@gmail.com", "reoikeda7@gmail.com", 
+                        "ikedareo2011@gmail.com"
+                    ];
+                    await setDoc(adminRef, { allowed: initialList });
+                    return initialList.includes(email);
+                }
+            } catch (e) {
+                console.error("Permission check failed", e);
+                return false;
+            }
+        };
+
+        const init = () => {
+            onAuthStateChanged(auth, async (user) => {
+                const authStatus = document.getElementById('auth-status');
+                if (user) {
+                    isAdmin = await checkAdminPermission(user.email);
+                    authStatus.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <img src="${user.photoURL}" class="w-6 h-6 rounded-full border">
+                            <span class="text-[10px] font-bold text-slate-600 hidden md:block">${user.displayName}${isAdmin ? ' (管理者)' : ''}</span>
+                            <button id="logout-btn" class="text-[10px] font-bold text-red-500 hover:underline">ログアウト</button>
+                        </div>
+                    `;
+                    document.getElementById('logout-btn').onclick = () => signOut(auth);
+                } else {
+                    isAdmin = false;
+                    authStatus.innerHTML = `
+                        <button id="login-btn" class="text-xs font-bold text-blue-900 border border-blue-900 px-3 py-1 rounded hover:bg-blue-50 transition-colors flex items-center gap-1">
+                            <i data-lucide="log-in" size="14"></i>管理者ログイン
+                        </button>
+                    `;
+                    document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
+                }
+                
+                // Firestoreデータの読み込み
+                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'news');
+                onSnapshot(colRef, (snapshot) => {
+                    posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    posts.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+                    render();
+                });
+                lucide.createIcons();
+            });
         };
 
         const convertDriveUrl = (url) => {
@@ -101,29 +158,6 @@
                 if (match && match[1]) return `https://lh3.googleusercontent.com/u/0/d/${match[1]}`;
             }
             return url;
-        };
-
-        const init = () => {
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    isAdmin = await checkIsAdmin(user.email);
-                    document.getElementById('login-btn').classList.add('hidden');
-                    document.getElementById('logout-btn').classList.remove('hidden');
-                    if (isAdmin) document.getElementById('admin-status').classList.remove('hidden');
-                } else {
-                    isAdmin = false;
-                    document.getElementById('login-btn').classList.remove('hidden');
-                    document.getElementById('logout-btn').classList.add('hidden');
-                    document.getElementById('admin-status').classList.add('hidden');
-                }
-
-                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'news');
-                onSnapshot(colRef, (snapshot) => {
-                    posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    posts.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-                    render();
-                });
-            });
         };
 
         const render = () => {
@@ -178,7 +212,6 @@
         };
 
         window.openEditModal = (id = null) => {
-            if(!isAdmin) return;
             editingId = id;
             document.getElementById('edit-modal').classList.add('active');
             const btnDelete = document.getElementById('delete-btn');
@@ -204,17 +237,8 @@
 
         window.closeModal = (id) => document.getElementById(id).classList.remove('active');
 
-        document.getElementById('login-btn').onclick = () => {
-            const provider = new GoogleAuthProvider();
-            signInWithPopup(auth, provider).catch(e => console.error(e));
-        };
-
-        document.getElementById('logout-btn').onclick = () => {
-            signOut(auth).then(() => window.location.reload());
-        };
-
         window.savePost = async () => {
-            if(!isAdmin) return;
+            if (!isAdmin) return alert("権限がありません");
             const data = {
                 title: document.getElementById('post-title').value,
                 category: document.getElementById('post-category').value,
@@ -233,321 +257,14 @@
         };
 
         window.deletePost = async (id) => {
-            if(!isAdmin) return;
-            if(confirm("この記事を削除してもよろしいですか？")) {
+            if (!isAdmin) return;
+            if (confirm("この記事を削除しますか？")) {
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'news', id));
-                window.location.href = "news.html";
-            }
-        };
-
-        init();
-    </script>
-</body>
-</html>
-
-s="p-6 flex-1 flex flex-col justify-center">
-                                    <span class="text-[10px] font-black text-blue-600 uppercase mb-2">${news.category}</span>
-                                    <h3 class="text-xl font-bold group-hover:text-blue-900 transition-colors">${news.title}</h3>
-                                    <p class="text-slate-400 text-sm mt-2">${news.date}</p>
-                                </div>
-                            </a>
-                        `).join('') : '<p class="text-center text-slate-400 py-10">投稿されたニュースはありません。</p>'}
-                    </div>
-                `;
-            }
-            lucide.createIcons();
-        };
-
-        window.openEditModal = (id = null) => {
-            if(!isAdmin) return;
-            editingId = id;
-            document.getElementById('edit-modal').classList.add('active');
-            const btnDelete = document.getElementById('delete-btn');
-            if (id) {
-                const post = posts.find(p => p.id === id);
-                document.getElementById('modal-title').innerText = "記事の編集";
-                document.getElementById('post-title').value = post.title || "";
-                document.getElementById('post-category').value = post.category || "Update";
-                document.getElementById('post-date').value = post.date || "";
-                document.getElementById('post-image').value = post.image || "";
-                document.getElementById('post-content').value = post.content || "";
-                btnDelete.classList.remove('hidden');
-                btnDelete.onclick = () => deletePost(id);
-            } else {
-                document.getElementById('modal-title').innerText = "記事の作成";
-                document.getElementById('post-title').value = "";
-                document.getElementById('post-date').value = new Date().toLocaleDateString('ja-JP').replace(/\//g, '.');
-                document.getElementById('post-image').value = "";
-                document.getElementById('post-content').value = "";
-                btnDelete.classList.add('hidden');
-            }
-        };
-
-        window.closeModal = (id) => document.getElementById(id).classList.remove('active');
-
-        document.getElementById('login-btn').onclick = () => {
-            const provider = new GoogleAuthProvider();
-            signInWithPopup(auth, provider).catch(e => console.error(e));
-        };
-
-        document.getElementById('logout-btn').onclick = () => {
-            signOut(auth).then(() => window.location.reload());
-        };
-
-        window.savePost = async () => {
-            if(!isAdmin) return;
-            const data = {
-                title: document.getElementById('post-title').value,
-                category: document.getElementById('post-category').value,
-                date: document.getElementById('post-date').value,
-                image: document.getElementById('post-image').value,
-                content: document.getElementById('post-content').value,
-                updatedAt: new Date().toISOString()
-            };
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'news');
-            if (editingId) {
-                await updateDoc(doc(colRef, editingId), data);
-            } else {
-                await addDoc(colRef, data);
-            }
-            closeModal('edit-modal');
-        };
-
-        window.deletePost = async (id) => {
-            if(!isAdmin) return;
-            if(confirm("この記事を削除してもよろしいですか？")) {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'news', id));
-                window.location.href = "news.html";
-            }
-        };
-
-        init();
-    </script>
-</body>
-</html>
-
-    <div id="login-modal" class="modal">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
-            <h2 class="text-xl font-black mb-4">管理者認証</h2>
-            <input type="password" id="admin-pass" placeholder="パスワード" class="w-full border p-3 rounded-lg mb-4 outline-none focus:ring-2 focus:ring-blue-900">
-            <div class="flex justify-end gap-2">
-                <button onclick="closeModal('login-modal')" class="px-4 py-2 text-slate-500 font-bold">キャンセル</button>
-                <button onclick="checkAdmin()" class="bg-blue-900 text-white px-6 py-2 rounded-lg font-bold">ログイン</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 記事作成/編集モーダル -->
-    <div id="edit-modal" class="modal">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 id="modal-title" class="text-2xl font-black mb-6">記事の作成</h2>
-            <div class="space-y-4">
-                <input type="text" id="post-title" placeholder="タイトル" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-900">
-                <div class="grid grid-cols-2 gap-4">
-                    <select id="post-category" class="border p-3 rounded-lg">
-                        <option value="Update">Update</option>
-                        <option value="Tickets">Tickets</option>
-                        <option value="Athletes">Athletes</option>
-                        <option value="Event">Event</option>
-                    </select>
-                    <input type="text" id="post-date" placeholder="日付 (例: 3026.06.15)" class="border p-3 rounded-lg">
-                </div>
-                <input type="text" id="post-image" placeholder="Googleドライブ画像URL" class="w-full border p-3 rounded-lg">
-                <textarea id="post-content" placeholder="本文内容" class="w-full border p-3 rounded-lg h-48"></textarea>
-                <div class="flex justify-between mt-6">
-                    <button id="delete-btn" class="hidden text-red-600 font-bold hover:underline">この記事を削除</button>
-                    <div class="flex gap-2 ml-auto">
-                        <button onclick="closeModal('edit-modal')" class="px-4 py-2 text-slate-500 font-bold">キャンセル</button>
-                        <button onclick="savePost()" class="bg-blue-900 text-white px-8 py-2 rounded-lg font-bold">保存する</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // 最新の提供された設定
-        const firebaseConfig = {
-            apiKey: "AIzaSyD8QXllW3Fzo1oewq72xg3PtYCG36ARaOA",
-            authDomain: "allen-sprint-cloud-data-6ffcf.firebaseapp.com",
-            projectId: "allen-sprint-cloud-data-6ffcf",
-            storageBucket: "allen-sprint-cloud-data-6ffcf.firebasestorage.app",
-            messagingSenderId: "403107535391",
-            appId: "1:403107535391:web:88a819f46f811d6d44932a",
-            measurementId: "G-PB9P6YXNWB"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = "allen-sprint-cloud-data-6ffcf"; 
-
-        let isAdmin = false;
-        let posts = [];
-        let editingId = null;
-
-        const convertDriveUrl = (url) => {
-            if (!url) return 'https://via.placeholder.com/800x400?text=No+Image';
-            if (url.includes('drive.google.com')) {
-                const match = url.match(/\/d\/([^/]+)/);
-                if (match && match[1]) {
-                    return `https://lh3.googleusercontent.com/u/0/d/${match[1]}`;
-                }
-            }
-            return url;
-        };
-
-        const init = async () => {
-            // 匿名認証を待機
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    // 認証成功後にリスナーを開始
-                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'news');
-                    onSnapshot(colRef, (snapshot) => {
-                        posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        posts.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-                        render();
-                    }, (error) => {
-                        console.error("Firestore Listen Error:", error);
-                        document.getElementById('main-content').innerHTML = `<p class="text-center text-red-500">Firestoreの読み取り権限またはパスが正しくありません。</p>`;
-                    });
-                } else {
-                    signInAnonymously(auth).catch(e => console.error("Auth Failed", e));
-                }
-            });
-        };
-
-        const render = () => {
-            const params = new URLSearchParams(window.location.search);
-            const id = params.get('id');
-            const container = document.getElementById('main-content');
-
-            if (id) {
-                const news = posts.find(n => n.id === id);
-                if (news) {
-                    container.innerHTML = `
-                        <article class="bg-white rounded-3xl shadow-xl overflow-hidden max-w-3xl mx-auto">
-                            <img src="${convertDriveUrl(news.image)}" class="w-full h-80 object-cover" onerror="this.src='https://via.placeholder.com/800x400?text=Image+Error'">
-                            <div class="p-8 md:p-12">
-                                <div class="flex justify-between items-start">
-                                    <span class="text-xs font-black text-blue-600 uppercase bg-blue-50 px-3 py-1 rounded-full">${news.category}</span>
-                                    ${isAdmin ? `<button onclick="openEditModal('${news.id}')" class="text-xs font-bold text-blue-900 border px-2 py-1 rounded">編集する</button>` : ''}
-                                </div>
-                                <h1 class="text-3xl font-black mt-6 leading-tight">${news.title}</h1>
-                                <p class="text-slate-400 text-sm mt-4 border-b border-slate-100 pb-4">${news.date}</p>
-                                <div class="mt-8 text-slate-700 leading-loose whitespace-pre-wrap">${news.content}</div>
-                                <div class="mt-12 pt-8 border-t border-slate-100">
-                                    <a href="news.html" class="inline-flex items-center gap-2 font-bold text-blue-900 hover:gap-4 transition-all"><i data-lucide="arrow-left"></i> ニュース一覧へ戻る</a>
-                                </div>
-                            </div>
-                        </article>
-                    `;
-                } else {
-                    container.innerHTML = `<p class="text-center">記事が見つかりません。<a href="news.html" class="text-blue-600">一覧へ戻る</a></p>`;
-                }
-            } else {
-                container.innerHTML = `
-                    <div class="flex justify-between items-center mb-12">
-                        <h1 class="text-4xl font-black italic font-athletics border-l-8 border-blue-900 pl-6 uppercase tracking-tighter">Latest News</h1>
-                        ${isAdmin ? `<button onclick="openEditModal()" class="bg-blue-900 text-white px-6 py-2 rounded-full font-bold text-sm">+ 新規記事作成</button>` : ''}
-                    </div>
-                    <div class="grid gap-8">
-                        ${posts.length > 0 ? posts.map(news => `
-                            <a href="news.html?id=${news.id}" class="flex flex-col md:flex-row bg-white rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden group">
-                                <div class="w-full md:w-64 h-48 bg-slate-200">
-                                    <img src="${convertDriveUrl(news.image)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
-                                </div>
-                                <div class="p-6 flex-1 flex flex-col justify-center">
-                                    <span class="text-[10px] font-black text-blue-600 uppercase mb-2">${news.category}</span>
-                                    <h3 class="text-xl font-bold group-hover:text-blue-900 transition-colors">${news.title}</h3>
-                                    <p class="text-slate-400 text-sm mt-2">${news.date}</p>
-                                </div>
-                            </a>
-                        `).join('') : '<p class="text-center text-slate-400 py-10">投稿されたニュースはありません。</p>'}
-                    </div>
-                `;
-            }
-            lucide.createIcons();
-        };
-
-        window.openEditModal = (id = null) => {
-            editingId = id;
-            document.getElementById('edit-modal').classList.add('active');
-            const btnDelete = document.getElementById('delete-btn');
-            if (id) {
-                const post = posts.find(p => p.id === id);
-                document.getElementById('modal-title').innerText = "記事の編集";
-                document.getElementById('post-title').value = post.title || "";
-                document.getElementById('post-category').value = post.category || "Update";
-                document.getElementById('post-date').value = post.date || "";
-                document.getElementById('post-image').value = post.image || "";
-                document.getElementById('post-content').value = post.content || "";
-                btnDelete.classList.remove('hidden');
-                btnDelete.onclick = () => deletePost(id);
-            } else {
-                document.getElementById('modal-title').innerText = "記事の作成";
-                document.getElementById('post-title').value = "";
-                document.getElementById('post-date').value = new Date().toLocaleDateString('ja-JP').replace(/\//g, '.');
-                document.getElementById('post-image').value = "";
-                document.getElementById('post-content').value = "";
-                btnDelete.classList.add('hidden');
-            }
-        };
-
-        window.closeModal = (id) => document.getElementById(id).classList.remove('active');
-
-        window.checkAdmin = () => {
-            if (document.getElementById('admin-pass').value === "allen3026") {
-                isAdmin = true;
-                closeModal('login-modal');
-                render();
-            } else {
-                alert("パスワードが違います");
-            }
-        };
-
-        window.savePost = async () => {
-            const data = {
-                title: document.getElementById('post-title').value,
-                category: document.getElementById('post-category').value,
-                date: document.getElementById('post-date').value,
-                image: document.getElementById('post-image').value,
-                content: document.getElementById('post-content').value,
-                updatedAt: new Date().toISOString()
-            };
-
-            try {
-                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'news');
-                if (editingId) {
-                    await updateDoc(doc(colRef, editingId), data);
-                } else {
-                    await addDoc(colRef, data);
-                }
+                const params = new URLSearchParams(window.location.search);
+                if (params.has('id')) window.location.href = "news.html";
                 closeModal('edit-modal');
-            } catch (e) {
-                console.error("Save Error:", e);
-                alert("保存に失敗しました。ルール設定またはprojectIdを確認してください。");
             }
         };
-
-        window.deletePost = async (id) => {
-            if(confirm("この記事を削除してもよろしいですか？")) {
-                try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'news', id));
-                    const params = new URLSearchParams(window.location.search);
-                    if (params.has('id')) window.location.href = "news.html";
-                    closeModal('edit-modal');
-                } catch (e) {
-                    console.error("Delete Error:", e);
-                }
-            }
-        };
-
-        document.getElementById('admin-btn').onclick = () => document.getElementById('login-modal').classList.add('active');
 
         init();
     </script>
