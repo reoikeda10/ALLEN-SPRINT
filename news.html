@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>スケジュール | アレン州スプリント 3026</title>
+    <title>ニュース | アレン州スプリント 3026</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -20,7 +20,7 @@
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
             <a href="index.html" class="flex items-center gap-2">
                 <div class="w-8 h-8 bg-blue-900 rounded flex items-center justify-center text-white font-athletics text-lg">AP</div>
-                <span class="font-black text-blue-900 font-athletics italic">SCHEDULE</span>
+                <span class="font-black text-blue-900 font-athletics italic">NEWS</span>
             </a>
             <div class="flex items-center gap-4">
                 <div id="user-info" class="hidden items-center gap-2 mr-2">
@@ -34,36 +34,238 @@
         </div>
     </nav>
 
-    <main class="py-12 px-4 max-w-5xl mx-auto">
-        <div class="flex justify-between items-center mb-12">
-            <h1 class="text-4xl font-black italic font-athletics border-l-8 border-blue-900 pl-6 uppercase tracking-tighter">Event Schedule</h1>
-            <button id="add-schedule-btn" class="hidden bg-blue-900 text-white px-6 py-2 rounded-full font-bold text-sm">+ スケジュール追加</button>
-        </div>
-
-        <div id="schedule-container" class="space-y-4">
-            <div class="flex justify-center py-20"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900"></div></div>
-        </div>
+    <main id="main-content" class="py-12 px-4 max-w-5xl mx-auto">
+        <div class="flex justify-center py-20"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900"></div></div>
     </main>
 
-    <!-- スケジュール編集モーダル -->
+    <!-- 記事作成/編集モーダル -->
     <div id="edit-modal" class="modal">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
-            <h2 id="modal-title" class="text-2xl font-black mb-6">スケジュールの管理</h2>
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 id="modal-title" class="text-2xl font-black mb-6">記事の作成</h2>
             <div class="space-y-4">
+                <input type="text" id="post-title" placeholder="タイトル" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-900">
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs font-bold text-slate-500 block mb-1">日付</label>
-                        <input type="text" id="sched-date" placeholder="3026.07.20" class="w-full border p-3 rounded-lg">
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-500 block mb-1">開始時間</label>
-                        <input type="text" id="sched-time" placeholder="10:00" class="w-full border p-3 rounded-lg">
+                    <select id="post-category" class="border p-3 rounded-lg">
+                        <option value="Update">Update</option>
+                        <option value="Tickets">Tickets</option>
+                        <option value="Athletes">Athletes</option>
+                        <option value="Event">Event</option>
+                    </select>
+                    <input type="text" id="post-date" placeholder="日付" class="border p-3 rounded-lg">
+                </div>
+                <input type="text" id="post-image" placeholder="Googleドライブ画像URL" class="w-full border p-3 rounded-lg">
+                <textarea id="post-content" placeholder="本文内容" class="w-full border p-3 rounded-lg h-48"></textarea>
+                <div class="flex justify-between mt-6">
+                    <button id="delete-btn" class="hidden text-red-600 font-bold hover:underline">この記事を削除</button>
+                    <div class="flex gap-2 ml-auto">
+                        <button onclick="closeModal('edit-modal')" class="px-4 py-2 text-slate-500 font-bold">キャンセル</button>
+                        <button onclick="savePost()" class="bg-blue-900 text-white px-8 py-2 rounded-lg font-bold">保存する</button>
                     </div>
                 </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-500 block mb-1">競技名</label>
-                    <input type="text" id="sched-event" placeholder="男子 100m" class="w-full border p-3 rounded-lg">
-                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8QXllW3Fzo1oewq72xg3PtYCG36ARaOA",
+            authDomain: "allen-sprint-cloud-data-6ffcf.firebaseapp.com",
+            projectId: "allen-sprint-cloud-data-6ffcf",
+            storageBucket: "allen-sprint-cloud-data-6ffcf.firebasestorage.app",
+            messagingSenderId: "403107535391",
+            appId: "1:403107535391:web:88a819f46f811d6d44932a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+        const appId = "allen-sprint-cloud-data-6ffcf";
+
+        let isAdmin = false;
+        let posts = [];
+        let editingId = null;
+
+        const convertDriveUrl = (url) => {
+            if (!url) return 'https://via.placeholder.com/800x400?text=No+Image';
+            if (url.includes('drive.google.com')) {
+                const match = url.match(/\/d\/([^/]+)/);
+                if (match && match[1]) return `https://lh3.googleusercontent.com/u/0/d/${match[1]}`;
+            }
+            return url;
+        };
+
+        const init = () => {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    await checkAdminStatus(user);
+                    setupRealtimeListener();
+                    updateUIForUser(user);
+                } else {
+                    isAdmin = false;
+                    setupRealtimeListener();
+                    updateUIForUser(null);
+                }
+            });
+        };
+
+        const checkAdminStatus = async (user) => {
+            try {
+                const adminRef = doc(db, 'artifacts', appId, 'public', 'data', 'admin_config', 'permissions');
+                const adminDoc = await getDoc(adminRef);
+                if (adminDoc.exists()) {
+                    const allowedEmails = adminDoc.data().allowedEmails || [];
+                    isAdmin = allowedEmails.includes(user.email);
+                }
+            } catch (e) {
+                console.error("Admin Check Error", e);
+            }
+        };
+
+        const setupRealtimeListener = () => {
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'news');
+            onSnapshot(colRef, (snapshot) => {
+                posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                posts.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+                render();
+            });
+        };
+
+        const updateUIForUser = (user) => {
+            const loginBtn = document.getElementById('admin-login-btn');
+            const userInfo = document.getElementById('user-info');
+            if (user) {
+                loginBtn.classList.add('hidden');
+                userInfo.classList.remove('hidden');
+                userInfo.classList.add('flex');
+                document.getElementById('user-photo').src = user.photoURL;
+                document.getElementById('user-name').innerText = user.displayName;
+            } else {
+                loginBtn.classList.remove('hidden');
+                userInfo.classList.add('hidden');
+            }
+        };
+
+        window.handleLogin = async () => {
+            try { await signInWithPopup(auth, provider); } catch (e) { console.error("Login Error", e); }
+        };
+
+        window.handleLogout = async () => {
+            await signOut(auth);
+            location.reload();
+        };
+
+        const render = () => {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            const container = document.getElementById('main-content');
+
+            if (id) {
+                const news = posts.find(n => n.id === id);
+                if (news) {
+                    container.innerHTML = `
+                        <article class="bg-white rounded-3xl shadow-xl overflow-hidden max-w-3xl mx-auto">
+                            <img src="${convertDriveUrl(news.image)}" class="w-full h-80 object-cover">
+                            <div class="p-8 md:p-12">
+                                <div class="flex justify-between items-start">
+                                    <span class="text-xs font-black text-blue-600 uppercase bg-blue-50 px-3 py-1 rounded-full">${news.category}</span>
+                                    ${isAdmin ? `<button onclick="openEditModal('${news.id}')" class="text-xs font-bold text-blue-900 border px-2 py-1 rounded">編集する</button>` : ''}
+                                </div>
+                                <h1 class="text-3xl font-black mt-6 leading-tight">${news.title}</h1>
+                                <p class="text-slate-400 text-sm mt-4 pb-4 border-b">${news.date}</p>
+                                <div class="mt-8 text-slate-700 leading-loose whitespace-pre-wrap">${news.content}</div>
+                                <div class="mt-12 pt-8 border-t">
+                                    <a href="news.html" class="font-bold text-blue-900 hover:gap-4 transition-all">ニュース一覧へ戻る</a>
+                                </div>
+                            </div>
+                        </article>
+                    `;
+                }
+            } else {
+                container.innerHTML = `
+                    <div class="flex justify-between items-center mb-12">
+                        <h1 class="text-4xl font-black italic font-athletics border-l-8 border-blue-900 pl-6 uppercase tracking-tighter">Latest News</h1>
+                        ${isAdmin ? `<button onclick="openEditModal()" class="bg-blue-900 text-white px-6 py-2 rounded-full font-bold text-sm">+ 新規記事作成</button>` : ''}
+                    </div>
+                    <div class="grid gap-8">
+                        ${posts.map(news => `
+                            <a href="news.html?id=${news.id}" class="flex flex-col md:flex-row bg-white rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden group">
+                                <div class="w-full md:w-64 h-48 bg-slate-200">
+                                    <img src="${convertDriveUrl(news.image)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                                </div>
+                                <div class="p-6 flex-1 flex flex-col justify-center">
+                                    <span class="text-[10px] font-black text-blue-600 uppercase mb-2">${news.category}</span>
+                                    <h3 class="text-xl font-bold group-hover:text-blue-900">${news.title}</h3>
+                                    <p class="text-slate-400 text-sm mt-2">${news.date}</p>
+                                </div>
+                            </a>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+        };
+
+        window.openEditModal = (id = null) => {
+            if (!isAdmin) return;
+            editingId = id;
+            document.getElementById('edit-modal').classList.add('active');
+            if (id) {
+                const post = posts.find(p => p.id === id);
+                document.getElementById('modal-title').innerText = "記事の編集";
+                document.getElementById('post-title').value = post.title || "";
+                document.getElementById('post-category').value = post.category || "Update";
+                document.getElementById('post-date').value = post.date || "";
+                document.getElementById('post-image').value = post.image || "";
+                document.getElementById('post-content').value = post.content || "";
+                document.getElementById('delete-btn').classList.remove('hidden');
+                document.getElementById('delete-btn').onclick = () => deletePost(id);
+            } else {
+                document.getElementById('modal-title').innerText = "記事の作成";
+                document.getElementById('post-title').value = "";
+                document.getElementById('post-date').value = new Date().toLocaleDateString('ja-JP').replace(/\//g, '.');
+                document.getElementById('post-image').value = "";
+                document.getElementById('post-content').value = "";
+                document.getElementById('delete-btn').classList.add('hidden');
+            }
+        };
+
+        window.closeModal = (id) => document.getElementById(id).classList.remove('active');
+
+        window.savePost = async () => {
+            if (!isAdmin) return;
+            const data = {
+                title: document.getElementById('post-title').value,
+                category: document.getElementById('post-category').value,
+                date: document.getElementById('post-date').value,
+                image: document.getElementById('post-image').value,
+                content: document.getElementById('post-content').value,
+                updatedAt: new Date().toISOString()
+            };
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'news');
+            if (editingId) await updateDoc(doc(colRef, editingId), data);
+            else await addDoc(colRef, data);
+            closeModal('edit-modal');
+        };
+
+        window.deletePost = async (id) => {
+            if (!isAdmin) return;
+            if(confirm("削除しますか？")) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'news', id));
+                closeModal('edit-modal');
+            }
+        };
+
+        document.getElementById('admin-login-btn').onclick = () => handleLogin();
+        init();
+    </script>
+</body>
+</html>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs font-bold text-slate-500 block mb-1">ステージ</label>
