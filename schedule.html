@@ -1,10 +1,48 @@
-g mb-4 outline-none focus:ring-2 focus:ring-blue-900">
-            <div class="flex justify-end gap-2">
-                <button onclick="closeModal('login-modal')" class="px-4 py-2 text-slate-500 font-bold">キャンセル</button>
-                <button onclick="checkAdmin()" class="bg-blue-900 text-white px-6 py-2 rounded-lg font-bold">ログイン</button>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スケジュール | アレン州スプリント 3026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Roboto+Condensed:ital,wght@1,700&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; }
+        .font-athletics { font-family: 'Roboto Condensed', sans-serif; font-style: italic; text-transform: uppercase; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+    <nav class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-blue-900 rounded flex items-center justify-center text-white font-athletics text-lg">AP</div>
+                <span class="font-black text-blue-900 font-athletics italic">SCHEDULE</span>
+            </a>
+            <div class="flex items-center gap-4">
+                <div id="auth-status" class="flex items-center gap-3">
+                    <button id="login-btn" class="text-xs font-bold text-blue-900 border border-blue-900 px-3 py-1 rounded hover:bg-blue-50 transition-colors flex items-center gap-1">
+                        <i data-lucide="log-in" size="14"></i>管理者ログイン
+                    </button>
+                </div>
+                <a href="index.html" class="text-sm font-bold text-slate-500 hover:text-blue-900">ホームへ戻る</a>
             </div>
         </div>
-    </div>
+    </nav>
+
+    <main class="py-12 px-4 max-w-5xl mx-auto">
+        <div class="flex justify-between items-center mb-12">
+            <h1 class="text-4xl font-black italic font-athletics border-l-8 border-blue-900 pl-6 uppercase tracking-tighter">Event Schedule</h1>
+            <button id="add-schedule-btn" class="hidden bg-blue-900 text-white px-6 py-2 rounded-full font-bold text-sm">+ スケジュール追加</button>
+        </div>
+
+        <div id="schedule-container" class="space-y-4">
+            <div class="flex justify-center py-20"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900"></div></div>
+        </div>
+    </main>
 
     <!-- スケジュール編集モーダル -->
     <div id="edit-modal" class="modal">
@@ -14,16 +52,16 @@ g mb-4 outline-none focus:ring-2 focus:ring-blue-900">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs font-bold text-slate-500 block mb-1">日付</label>
-                        <input type="text" id="sched-date" placeholder="3026.07.20" class="w-full border p-3 rounded-lg">
+                        <input type="text" id="sched-date" class="w-full border p-3 rounded-lg">
                     </div>
                     <div>
                         <label class="text-xs font-bold text-slate-500 block mb-1">開始時間</label>
-                        <input type="text" id="sched-time" placeholder="10:00" class="w-full border p-3 rounded-lg">
+                        <input type="text" id="sched-time" class="w-full border p-3 rounded-lg">
                     </div>
                 </div>
                 <div>
                     <label class="text-xs font-bold text-slate-500 block mb-1">競技名</label>
-                    <input type="text" id="sched-event" placeholder="男子 100m" class="w-full border p-3 rounded-lg">
+                    <input type="text" id="sched-event" class="w-full border p-3 rounded-lg">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -34,6 +72,177 @@ g mb-4 outline-none focus:ring-2 focus:ring-blue-900">
                             <option value="決勝">決勝</option>
                             <option value="表彰式">表彰式</option>
                         </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 block mb-1">ヒート/組</label>
+                        <input type="text" id="sched-heat" class="w-full border p-3 rounded-lg">
+                    </div>
+                </div>
+                <div class="flex justify-between mt-6">
+                    <button id="delete-btn" class="hidden text-red-600 font-bold hover:underline">削除</button>
+                    <div class="flex gap-2 ml-auto">
+                        <button onclick="closeModal('edit-modal')" class="px-4 py-2 text-slate-500 font-bold">キャンセル</button>
+                        <button onclick="saveSchedule()" class="bg-blue-900 text-white px-8 py-2 rounded-lg font-bold">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8QXllW3Fzo1oewq72xg3PtYCG36ARaOA",
+            authDomain: "allen-sprint-cloud-data-6ffcf.firebaseapp.com",
+            projectId: "allen-sprint-cloud-data-6ffcf",
+            storageBucket: "allen-sprint-cloud-data-6ffcf.firebasestorage.app",
+            messagingSenderId: "403107535391",
+            appId: "1:403107535391:web:88a819f46f811d6d44932a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+        const appId = "allen-sprint-cloud-data-6ffcf";
+
+        let isAdmin = false;
+        let schedules = [];
+        let editingId = null;
+
+        const checkAdminPermission = async (email) => {
+            if (!email) return false;
+            const adminRef = doc(db, 'artifacts', appId, 'admin_config', 'permissions');
+            const snap = await getDoc(adminRef);
+            if (snap.exists()) {
+                return (snap.data().allowed || []).includes(email);
+            }
+            return false;
+        };
+
+        const init = () => {
+            onAuthStateChanged(auth, async (user) => {
+                const authStatus = document.getElementById('auth-status');
+                const addBtn = document.getElementById('add-schedule-btn');
+                
+                if (user) {
+                    isAdmin = await checkAdminPermission(user.email);
+                    authStatus.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <img src="${user.photoURL}" class="w-6 h-6 rounded-full border">
+                            <button id="logout-btn" class="text-[10px] font-bold text-red-500">ログアウト</button>
+                        </div>
+                    `;
+                    document.getElementById('logout-btn').onclick = () => signOut(auth);
+                    if (isAdmin) addBtn.classList.remove('hidden');
+                } else {
+                    isAdmin = false;
+                    addBtn.classList.add('hidden');
+                    authStatus.innerHTML = `
+                        <button id="login-btn" class="text-xs font-bold text-blue-900 border border-blue-900 px-3 py-1 rounded hover:bg-blue-50 transition-colors">管理者ログイン</button>
+                    `;
+                    document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
+                }
+
+                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'schedule');
+                onSnapshot(colRef, (snapshot) => {
+                    schedules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    schedules.sort((a, b) => {
+                        const d = (a.date || "").localeCompare(b.date || "");
+                        return d !== 0 ? d : (a.time || "").localeCompare(b.time || "");
+                    });
+                    render();
+                });
+            });
+        };
+
+        const render = () => {
+            const container = document.getElementById('schedule-container');
+            container.innerHTML = schedules.map(item => `
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group">
+                    <div class="flex items-center gap-6 md:gap-12">
+                        <div class="text-center min-w-[80px]">
+                            <span class="block text-xs font-black text-slate-400 mb-1">${item.date}</span>
+                            <span class="block text-2xl font-black font-athletics text-blue-900 italic leading-none">${item.time}</span>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-black px-2 py-0.5 rounded bg-blue-50 text-blue-700">${item.stage}</span>
+                                <span class="text-[10px] font-bold text-slate-400">${item.heat || ""}</span>
+                            </div>
+                            <h3 class="text-xl font-bold">${item.event}</h3>
+                        </div>
+                    </div>
+                    ${isAdmin ? `<button onclick="openEditModal('${item.id}')" class="text-blue-900 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="edit-3"></i></button>` : ''}
+                </div>
+            `).join('');
+            lucide.createIcons();
+        };
+
+        window.openEditModal = (id = null) => {
+            editingId = id;
+            document.getElementById('edit-modal').classList.add('active');
+            const btnDelete = document.getElementById('delete-btn');
+            if (id) {
+                const item = schedules.find(s => s.id === id);
+                document.getElementById('modal-title').innerText = "スケジュール編集";
+                document.getElementById('sched-date').value = item.date || "";
+                document.getElementById('sched-time').value = item.time || "";
+                document.getElementById('sched-event').value = item.event || "";
+                document.getElementById('sched-stage').value = item.stage || "予選";
+                document.getElementById('sched-heat').value = item.heat || "";
+                btnDelete.classList.remove('hidden');
+                btnDelete.onclick = () => deleteSchedule(id);
+            } else {
+                document.getElementById('modal-title').innerText = "スケジュール追加";
+                document.getElementById('sched-date').value = "3026.07.20";
+                document.getElementById('sched-time').value = "";
+                document.getElementById('sched-event').value = "";
+                document.getElementById('sched-stage').value = "予選";
+                document.getElementById('sched-heat').value = "";
+                btnDelete.classList.add('hidden');
+            }
+        };
+
+        window.closeModal = (id) => document.getElementById(id).classList.remove('active');
+
+        window.saveSchedule = async () => {
+            if (!isAdmin) return alert("権限がありません");
+            const data = {
+                date: document.getElementById('sched-date').value,
+                time: document.getElementById('sched-time').value,
+                event: document.getElementById('sched-event').value,
+                stage: document.getElementById('sched-stage').value,
+                heat: document.getElementById('sched-heat').value,
+                updatedAt: new Date().toISOString()
+            };
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'schedule');
+            if (editingId) {
+                await updateDoc(doc(colRef, editingId), data);
+            } else {
+                await addDoc(colRef, data);
+            }
+            closeModal('edit-modal');
+        };
+
+        window.deleteSchedule = async (id) => {
+            if (!isAdmin) return;
+            if (confirm("削除しますか？")) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedule', id));
+                closeModal('edit-modal');
+            }
+        };
+
+        document.getElementById('add-schedule-btn').onclick = () => openEditModal();
+
+        init();
+    </script>
+</body>
+</html>
+
                     </div>
                     <div>
                         <label class="text-xs font-bold text-slate-500 block mb-1">ヒート/組</label>
