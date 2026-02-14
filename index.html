@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アレン州スプリント 3026 | 公式サイト</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&family=Roboto+Condensed:ital,wght@0,700;1,700&display=swap');
+        :root { --primary: #003399; --secondary: #e6b800; --accent: #cc0000; }
+        body { font-family: 'Noto Sans JP', sans-serif; scroll-behavior: smooth; }
+        .font-athletics { font-family: 'Roboto Condensed', sans-serif; font-style: italic; text-transform: uppercase; }
+        .hero-gradient { background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1532444458054-015fddf2b2ca?q=80&w=2070&auto=format&fit=crop'); background-size: cover; background-position: center; }
+        .section-title::after { content: ''; display: block; width: 60px; height: 4px; background: var(--primary); margin-top: 8px; }
+        .nav-link { position: relative; transition: color 0.3s; }
+        .nav-link::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 2px; background: var(--secondary); transition: width 0.3s; }
+        .nav-link:hover::after { width: 100%; }
+    </style>
+</head>
+<body class="bg-white text-slate-900">
+
+    <nav class="fixed w-full z-50 bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <a href="index.html" class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-blue-900 rounded flex items-center justify-center text-white font-athletics text-xl">AP</div>
+                    <div>
+                        <span class="block font-black text-xl leading-none font-athletics text-blue-900">ALLEN PROVINCE</span>
+                        <span class="block text-[10px] font-bold tracking-[0.3em] text-slate-500 uppercase">Sprint Championships 3026</span>
+                    </div>
+                </a>
+            </div>
+            <div class="hidden md:flex items-center gap-8 text-sm font-bold tracking-tighter">
+                <a href="index.html#about" class="nav-link">大会概要</a>
+                <a href="schedule.html" class="nav-link text-blue-900">スケジュール</a>
+                <a href="result.html" class="nav-link">大会結果</a>
+                <a href="news.html" class="nav-link">ニュース</a>
+                <a href="index.html#venue" class="nav-link">会場案内</a>
+                <a href="#tickets" class="bg-blue-900 text-white px-6 py-2 rounded-full hover:bg-blue-800 transition-colors">チケット購入</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero-gradient h-screen flex items-center justify-center text-white relative">
+        <div class="text-center px-4">
+            <div class="inline-block bg-blue-900/80 backdrop-blur-sm px-4 py-1 mb-6 rounded-md">
+                <p class="text-sm font-bold tracking-widest font-athletics">GANDON / ALLEN PROVINCE</p>
+            </div>
+            <h1 class="text-6xl md:text-8xl font-black italic uppercase leading-none mb-4 font-athletics tracking-tighter">UNLEASH THE<br><span class="text-yellow-400">SPEED</span></h1>
+            <p class="text-xl md:text-2xl font-light mb-10 tracking-widest uppercase">アレン州スプリント 3026</p>
+            <div class="flex flex-col md:flex-row gap-4 justify-center">
+                <div class="flex items-center gap-2 bg-white/20 backdrop-blur-md px-6 py-4 rounded-xl border border-white/30 font-bold"><i data-lucide="calendar"></i>3026.07.20</div>
+                <div class="flex items-center gap-2 bg-white/20 backdrop-blur-md px-6 py-4 rounded-xl border border-white/30 font-bold"><i data-lucide="map-pin"></i>マンハッテンフィールド</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-24 max-w-7xl mx-auto px-4 grid md:grid-cols-2 gap-16 items-center">
+        <div>
+            <h2 class="text-3xl font-black uppercase italic font-athletics section-title mb-8">大会概要</h2>
+            <div class="space-y-6 text-slate-600 leading-relaxed">
+                <p>「アレン州スプリント 3026」は、ガンドン国アレン州が主催する、短距離競技に特化した世界最高峰の陸上競技大会です。</p>
+                <div class="grid grid-cols-2 gap-4 pt-4">
+                    <div class="border-l-4 border-blue-900 pl-4"><span class="block text-2xl font-black text-blue-900">48</span><span class="text-xs font-bold text-slate-400 uppercase">Events</span></div>
+                    <div class="border-l-4 border-blue-900 pl-4"><span class="block text-2xl font-black text-blue-900">5,000+</span><span class="text-xs font-bold text-slate-400 uppercase">Athletes</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="relative">
+            <img src="https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=2070&auto=format&fit=crop" class="rounded-3xl shadow-2xl" alt="Athletes">
+        </div>
+    </section>
+
+    <!-- Schedule Preview (Firestore同期) -->
+    <section id="schedule" class="py-24 bg-blue-900 text-white">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-end mb-12">
+                <h2 class="text-3xl font-black uppercase italic font-athletics border-l-8 border-yellow-400 pl-6">タイムテーブル</h2>
+                <a href="schedule.html" class="text-sm font-bold text-yellow-400 hover:underline flex items-center gap-1">全日程を見る <i data-lucide="arrow-right" size="14"></i></a>
+            </div>
+            <div id="home-schedule-container" class="space-y-4">
+                <!-- JSで挿入 -->
+            </div>
+        </div>
+    </section>
+
+    <!-- News Section -->
+    <section id="news" class="py-24 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-end mb-12">
+                <div><h2 class="text-3xl font-black uppercase italic font-athletics section-title mb-2">最新ニュース</h2><p class="text-slate-500 text-sm font-bold uppercase">Latest Updates</p></div>
+                <a href="news.html" class="bg-white border border-slate-200 px-6 py-2 rounded-full font-bold text-sm hover:bg-slate-100 transition-colors">すべて見る</a>
+            </div>
+            <div id="top-news-container" class="grid md:grid-cols-3 gap-8">
+                <div class="col-span-3 flex justify-center py-10"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900"></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Venue Section -->
+    <section id="venue" class="py-24 max-w-7xl mx-auto px-4">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl font-black uppercase italic font-athletics mb-4">会場案内：マンハッテンフィールド</h2>
+            <p class="text-slate-500">アレン州の誇る、ガンドン国屈指の多目的陸上競技場</p>
+        </div>
+        <div class="grid md:grid-cols-2 gap-8">
+            <div class="bg-slate-100 rounded-3xl p-10 flex flex-col justify-center">
+                <ul class="space-y-4 text-slate-600 font-bold">
+                    <li class="flex items-center gap-3"><i data-lucide="check" class="text-blue-900"></i>収容人数：80,000人</li>
+                    <li class="flex items-center gap-3"><i data-lucide="check" class="text-blue-900"></i>トラック：最新式モンド合成ゴム</li>
+                </ul>
+            </div>
+            <img src="https://images.unsplash.com/photo-1541252260730-0412e8e2108e?q=80&w=2148&auto=format&fit=crop" class="rounded-3xl shadow-xl" alt="Stadium">
+        </div>
+    </section>
+
+    <!-- Highlights (Bottom) -->
+    <section class="py-20 bg-white border-t border-slate-100">
+        <div class="max-w-7xl mx-auto px-4 grid md:grid-cols-3 gap-8">
+            <div class="p-8 rounded-2xl bg-blue-50">
+                <div class="text-blue-900 mb-4"><i data-lucide="users" size="32"></i></div>
+                <h3 class="text-xl font-bold mb-2">200カ国から集結</h3>
+                <p class="text-slate-500 text-sm">ガンドン国最大規模の国際大会として、世界最高峰のアスリートがマンハッテンフィールドに集結します。</p>
+            </div>
+            <div class="p-8 rounded-2xl bg-yellow-50">
+                <div class="text-yellow-600 mb-4"><i data-lucide="zap" size="32"></i></div>
+                <h3 class="text-xl font-bold mb-2">驚異のスピード</h3>
+                <p class="text-slate-500 text-sm">アレン州特有の気候条件と最新のトラックが、新たな人類の限界突破をサポートします。</p>
+            </div>
+            <div class="p-8 rounded-2xl bg-red-50">
+                <div class="text-red-600 mb-4"><i data-lucide="tv" size="32"></i></div>
+                <h3 class="text-xl font-bold mb-2">全世界同時中継</h3>
+                <p class="text-slate-500 text-sm">3026年最大のスポーツイベントを、あらゆるデバイスからリアルタイムで体験できます。</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-slate-900 text-white py-16">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <div class="text-2xl font-black font-athletics italic mb-4 uppercase tracking-tighter">Allen Province Sprint 3026</div>
+            <div class="text-slate-500 text-xs uppercase tracking-widest">© 3026 Organizing Committee. Gandon Official.</div>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8QXllW3Fzo1oewq72xg3PtYCG36ARaOA",
+            authDomain: "allen-sprint-cloud-data-6ffcf.firebaseapp.com",
+            projectId: "allen-sprint-cloud-data-6ffcf",
+            storageBucket: "allen-sprint-cloud-data-6ffcf.firebasestorage.app",
+            messagingSenderId: "403107535391",
+            appId: "1:403107535391:web:88a819f46f811d6d44932a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "allen-sprint-cloud-data-6ffcf";
+
+        const convertDriveUrl = (url) => {
+            if (!url) return 'https://via.placeholder.com/800x400?text=No+Image';
+            if (url.includes('drive.google.com')) {
+                const match = url.match(/\/d\/([^/]+)/);
+                if (match && match[1]) {
+                    return `https://lh3.googleusercontent.com/u/0/d/${match[1]}`;
+                }
+            }
+            return url;
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // News Listener
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'news'), (snapshot) => {
+                    const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    posts.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+                    renderNews(posts);
+                });
+
+                // Schedule Listener
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'schedule'), (snapshot) => {
+                    const scheds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    scheds.sort((a, b) => {
+                        const d = (a.date || "").localeCompare(b.date || "");
+                        return d !== 0 ? d : (a.time || "").localeCompare(b.time || "");
+                    });
+                    renderSchedule(scheds);
+                });
+            } else {
+                signInAnonymously(auth);
+            }
+        });
+
+        function renderNews(posts) {
+            const container = document.getElementById('top-news-container');
+            const topPosts = posts.slice(0, 3);
+            if (topPosts.length === 0) {
+                container.innerHTML = '<p class="col-span-3 text-center text-slate-400">ニュースはありません</p>';
+                return;
+            }
+            container.innerHTML = topPosts.map(news => `
+                <a href="news.html?id=${news.id}" class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group">
+                    <div class="h-48 overflow-hidden bg-slate-200">
+                        <img src="${convertDriveUrl(news.image)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
+                    </div>
+                    <div class="p-6">
+                        <span class="text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-2 py-1 rounded">${news.category || 'Update'}</span>
+                        <h3 class="mt-3 font-bold text-lg leading-tight group-hover:text-blue-900 transition-colors">${news.title}</h3>
+                        <p class="mt-2 text-slate-400 text-xs">${news.date}</p>
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        function renderSchedule(scheds) {
+            const container = document.getElementById('home-schedule-container');
+            const topScheds = scheds.slice(0, 4); // トップには4件表示
+            if (topScheds.length === 0) {
+                container.innerHTML = '<p class="text-center text-white/50">予定されているスケジュールはありません</p>';
+                return;
+            }
+            container.innerHTML = topScheds.map(item => `
+                <div class="flex items-center justify-between p-6 bg-white/10 rounded-2xl transition-all">
+                    <div class="flex items-center gap-8">
+                        <span class="text-2xl font-black font-athletics text-yellow-400 italic">${item.time}</span>
+                        <div>
+                            <span class="text-[10px] font-black uppercase text-white/50 block mb-1">${item.stage}</span>
+                            <span class="text-xl font-bold">${item.event}</span>
+                        </div>
+                    </div>
+                    <span class="hidden md:block text-xs font-black uppercase tracking-widest text-white/30">${item.heat || ""}</span>
+                </div>
+            `).join('');
+        }
+
+        window.onload = () => { lucide.createIcons(); };
+    </script>
+</body>
+</html>
+
